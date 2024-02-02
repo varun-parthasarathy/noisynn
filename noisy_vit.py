@@ -43,34 +43,52 @@ class NoisyViT(VisionTransformer):
         x = self.patch_drop(x)
         x = self.norm_pre(x)
 
-        if self.training:
-            # Add noise only in the training phase
-            x = self.blocks[:-1](x)
-            # Assume that the first embedding is the token. We do not want to take the token into account
-            # when adding noise
-            token = x[:, 0, :].unsqueeze(1)
-            x = x[:, 1:, :]
-            B, L, C = x.shape
-            # Flatten for matmul purposes, axes are just abstracts anyway
-            x = torch.flatten(x, 1)
+        # if self.training:
+        #     # Add noise only in the training phase
+        #     x = self.blocks[:-1](x)
+        #     # Assume that the first embedding is the token. We do not want to take the token into account
+        #     # when adding noise
+        #     token = x[:, 0, :].unsqueeze(1)
+        #     x = x[:, 1:, :]
+        #     B, L, C = x.shape
+        #     # Flatten for matmul purposes, axes are just abstracts anyway
+        #     x = torch.flatten(x, 1)
 
-            # The dimensions of the quality matrix are batch_size x batch_size as described in the paper. This is
-            # because the noise itself is the result of linear transformations on the input at the image level
-            with torch.no_grad(): # For safety
-                Q = quality_matrix(B, self.alpha)
-                # Since image X1 needs to receive noise from a different image X2, we sample the negative pairs using labels y
-                # The benefit is that we do not need to perform any separate sampling strategy from the dataset, which allows
-                # this to be dropped into any backbone in theory. The issue however is that labels need to be passed in the
-                # forward pass during training.
-                rand_x = self.generate_linear_transform_noise(x, y, B)
-                # Compute X1 + QX2
-                x = x + Q@rand_x
+        #     # The dimensions of the quality matrix are batch_size x batch_size as described in the paper. This is
+        #     # because the noise itself is the result of linear transformations on the input at the image level
+        #     with torch.no_grad(): # For safety
+        #         Q = quality_matrix(B, self.alpha)
+        #         # Since image X1 needs to receive noise from a different image X2, we sample the negative pairs using labels y
+        #         # The benefit is that we do not need to perform any separate sampling strategy from the dataset, which allows
+        #         # this to be dropped into any backbone in theory. The issue however is that labels need to be passed in the
+        #         # forward pass during training.
+        #         rand_x = self.generate_linear_transform_noise(x, y, B)
+        #         # Compute X1 + QX2
+        #         x = x + Q@rand_x
             
-            x = x.reshape(B, L, C)
-            x = torch.cat([token, x], dim=1)
-            x = self.blocks[-1](x)
-        else:
-            x = self.blocks(x)
+        #     x = x.reshape(B, L, C)
+        #     x = torch.cat([token, x], dim=1)
+        #     x = self.blocks[-1](x)
+        # else:
+        #     x = self.blocks(x)
+
+        # During the review process, the authors have mentioned that noise should be added
+        # in both training and testing phases, which is a bit weird; however I will be editing
+        # this code to match them for now
+        x = self.blocks[:-1](x)
+        token = x[:, 0, :].unsqueeze(1)
+        x = x[:, 1:, :]
+        B, L, C = x.shape
+        x = torch.flatten(x, 1)
+
+        with torch.no_grad(): # For safety
+            Q = quality_matrix(B, self.alpha)
+            rand_x = self.generate_linear_transform_noise(x, y, B)
+            x = x + Q@rand_x
+        
+        x = x.reshape(B, L, C)
+        x = torch.cat([token, x], dim=1)
+        x = self.blocks[-1](x)
         x = self.norm(x)
         return x
     

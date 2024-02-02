@@ -70,20 +70,31 @@ class LinearTransformNoiseLayer(torch.nn.Module):
             return rand_x
         
     def forward(self, x):
-        if self.training:
-            # Add noise during training only
-            input_shape = x.shape
-            # Flatten x for matrix multiplication; axes are just abstracts anyway
-            x = torch.flatten(x, 1)
-            Q = self.compute_quality_matrix(input_shape[0])
-            X2 = self.generate_random_sample(x)
-            # Add the linear transform noise
-            x = x + Q@X2
-            x = x.reshape(input_shape)
-            return x
-        else:
-            # During inference, operate as an identity layer
-            return x
+        # if self.training:
+        #     # Add noise during training only
+        #     input_shape = x.shape
+        #     # Flatten x for matrix multiplication; axes are just abstracts anyway
+        #     x = torch.flatten(x, 1)
+        #     Q = self.compute_quality_matrix(input_shape[0])
+        #     X2 = self.generate_random_sample(x)
+        #     # Add the linear transform noise
+        #     x = x + Q@X2
+        #     x = x.reshape(input_shape)
+        #     return x
+        # else:
+        #     # During inference, operate as an identity layer
+        #     return x
+
+        # During the review process, the authors have mentioned that noise should be added
+        # in both training and testing phases, which is a bit weird; however I will be editing
+        # this layer to match them for now
+        input_shape = x.shape
+        x = torch.flatten(x, 1)
+        Q = self.compute_quality_matrix(input_shape[0])
+        X2 = self.generate_random_sample(x)
+        x = x + Q@X2
+        x = x.reshape(input_shape)
+        return x
         
 
 if __name__ == '__main__':
