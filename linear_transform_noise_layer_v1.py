@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 
-class LinearTransformNoiseLayer(torch.nn.Module):
+class LinearTransformNoiseLayerV1(torch.nn.Module):
     def __init__(self, alpha=None, metric='L2', simple=False, **kwargs):
         '''
         Arguments -
@@ -98,7 +98,7 @@ class LinearTransformNoiseLayer(torch.nn.Module):
         
 
 if __name__ == '__main__':
-    noise_layer = LinearTransformNoiseLayer()
+    noise_layer = LinearTransformNoiseLayerV1()
     inputs = torch.rand((16, 64, 4, 4))
     outputs = noise_layer(inputs)
     print(outputs.shape, outputs.requires_grad)
